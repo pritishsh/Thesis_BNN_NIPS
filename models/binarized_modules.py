@@ -82,7 +82,10 @@ class BinarizeLinear(nn.Linear):
         if not self.bias is None:
             self.bias.org=self.bias.data.clone()
             out += self.bias.view(1, -1).expand_as(out)
-
+            print('self.bias.view(1, -1).expand_as(out)')
+            print(self.bias.view(1, -1).expand_as(out))
+            print('biasssss')
+            print(self.bias)
         return out
 
 class BinarizeConv2d(nn.Conv2d):

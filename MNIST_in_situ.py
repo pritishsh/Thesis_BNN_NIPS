@@ -11,7 +11,7 @@ from models.binarized_modules import  BinarizeLinear,BinarizeConv2d
 from models.binarized_modules import  Binarize,HingeLoss
 import numpy as np
 from PIL import Image
-
+import random
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
 parser.add_argument('--batch-size', type=int, default=256, metavar='N',
@@ -281,11 +281,63 @@ def test():
         100. * correct / len(test_loader.dataset)))
 
 if __name__ == '__main__':
+
+    # for input = 1, 1% of all devices are S.A.1
+    # print('Enter percent of devices stuck at 1 ')
+    # prob_sa1 = int(input())/100
+    prob_sa1 = 9.99 / 10
+    print(f'probability of device stuck at 1: {100 * prob_sa1}%')
+
+    sa1 = {'fc1': [],
+           'fc2': [],
+           'fc3': []
+           }
+
+    #fix what  devices will be SA1
+    for i in range(len(model.fc1.weight)):
+        sa1['fc1'].append([])
+        for j in range(len(model.fc1.weight[i])):
+            sa1['fc1'][i].append(False if random.random()>prob_sa1 else True)
+    for i in range(len(model.fc2.weight)):
+        sa1['fc2'].append([])
+        for j in range(len(model.fc2.weight[i])):
+            sa1['fc2'][i].append(False if random.random() > prob_sa1 else True)
+    for i in range(len(model.fc3.weight)):
+        sa1['fc3'].append([])
+        for j in range(len(model.fc3.weight[i])):
+            sa1['fc3'][i].append(False if random.random() > prob_sa1 else True)
+
+
     for epoch in range(1, args.epochs + 1):
         train(epoch)
+
+        for i in range(len(model.fc1.weight)):
+            for j in range(len(model.fc1.weight[i])):
+                print(model.fc1.weight[i, j].tolist())
+                '''with torch.no_grad():
+                    if sa1['fc1'][i][j]:
+                        model.fc1.weight[i, j] = 1
+                print(model.fc1.weight[i, j].tolist())
+                '''
+        for i in range(len(model.fc2.weight)):
+            for j in range(len(model.fc2.weight[i])):
+                with torch.no_grad():
+                    if sa1['fc2'][i][j]:
+                        model.fc2.weight[i, j] = 1
+        for i in range(len(model.fc3.weight)):
+            for j in range(len(model.fc3.weight[i])):
+                with torch.no_grad():
+                    if sa1['fc3'][i][j]:
+                        model.fc3.weight[i, j] = 1
+
         test()
+
+
+        if epoch%10==0:
+            print('stop')
+
         if epoch%100==0:
             optimizer.param_groups[0]['lr']=optimizer.param_groups[0]['lr']*0.1
 
         #print(model.parameters())
-        torch.save(model.state_dict(),f'saved_models/red_net_4/epoch_{epoch}.pth')
+        torch.save(model.state_dict(),f'saved_models/red_net_4_50p_sa1/epoch_{epoch}.pth')
