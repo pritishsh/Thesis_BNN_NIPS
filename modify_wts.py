@@ -3,6 +3,8 @@
 
 from __future__ import print_function
 import argparse
+import copy
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -52,7 +54,6 @@ files = ['zero.png',
          'nine.png',
          ]
 
-
 def download_mnist_datasets():
     train_data = datasets.MNIST(
         root="data",
@@ -79,16 +80,16 @@ def predict(model, input, class_mapping):
     return predicted
 
 def test(net_in):
+    net_clone= copy.deepcopy(net_in)
     criterion = nn.CrossEntropyLoss()
-    net_in.train()
-    net_in.eval()
+    net_clone.train()
+    net_clone.eval()
     test_loss = 0
     correct = 0
     with torch.no_grad():
         for data, target in test_loader:
-
             data, target = Variable(data), Variable(target)
-            output = net_in(data)
+            output = net_clone(data)
             test_loss += criterion(output, target).item() # sum up batch loss
             pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
             correct += pred.eq(target.data.view_as(pred)).cpu().sum()
@@ -99,16 +100,14 @@ def test(net_in):
         100. * correct / len(test_loader.dataset)))
 
 
-
-
 if __name__ == "__main__":
     # load back the model
-    state_dict = torch.load("saved_models/red_net_4/epoch_100.pth")
+    state_dict = torch.load("saved_models/red_net_4_50p_sa1/epoch_80.pth")
     feed_forward_net = red_net_4()
     feed_forward_net.load_state_dict(state_dict)
 
     print('original accuracy:')
-    #test(feed_forward_net)
+    test(feed_forward_net)
 
 
     #print(feed_forward_net)
@@ -117,7 +116,7 @@ if __name__ == "__main__":
     #for input = 1, 1% of all devices are S.A.1
     #print('Enter percent of devices stuck at 1 ')
     #prob_sa1 = int(input())/100
-    prob_sa1 = 1/10
+    prob_sa1 = 1
     print(f'probability of device stuck at 1: {100*prob_sa1}%')
 
     sa1 = {'fc1': [],

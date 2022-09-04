@@ -1,5 +1,6 @@
 
 from __future__ import print_function
+import copy
 import argparse
 import torch
 import torch.nn as nn
@@ -18,7 +19,7 @@ parser.add_argument('--batch-size', type=int, default=256, metavar='N',
                     help='input batch size for training (default: 256)')
 parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
                     help='input batch size for testing (default: 1000)')
-parser.add_argument('--epochs', type=int, default=250, metavar='N',
+parser.add_argument('--epochs', type=int, default=50, metavar='N',
                     help='number of epochs to train (default: 100)')
 parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                     help='learning rate (default: 0.001)')
@@ -56,7 +57,6 @@ test_loader = torch.utils.data.DataLoader(
     batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
 
-
 class Net_default(nn.Module):
     def __init__(self):
         super(Net_default, self).__init__()
@@ -89,7 +89,6 @@ class Net_default(nn.Module):
         x = self.fc4(x)
         return self.logsoftmax(x)
 
-
 class Net_no_bn(nn.Module):
     def __init__(self):
         super(Net_no_bn, self).__init__()
@@ -121,7 +120,6 @@ class Net_no_bn(nn.Module):
         x = self.htanh3(x)
         x = self.fc4(x)
         return self.logsoftmax(x)
-
 
 class red_net_1(nn.Module):
     def __init__(self):
@@ -171,7 +169,6 @@ class red_net_2(nn.Module):
         x = self.fc4(x)
         return self.logsoftmax(x)
 
-
 class red_net_3(nn.Module):
     def __init__(self):
         super(red_net_3, self).__init__()
@@ -194,7 +191,6 @@ class red_net_3(nn.Module):
         x = self.fc3(x)
         return self.logsoftmax(x)
 
-
 class red_net_4(nn.Module):
     def __init__(self):
         super(red_net_4, self).__init__()
@@ -216,9 +212,6 @@ class red_net_4(nn.Module):
         x = self.htanh2(x)
         x = self.fc3(x)
         return self.logsoftmax(x)
-
-
-
 
 model = red_net_4()
 if args.cuda:
@@ -259,10 +252,11 @@ def train(epoch):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
 
-
-
 def test():
-    model.eval()
+    net_clone = copy.deepcopy(model)
+    net_clone.train()
+    net_clone.eval()
+    net_clone.eval()
     test_loss = 0
     correct = 0
     with torch.no_grad():
@@ -270,7 +264,7 @@ def test():
             if args.cuda:
                 data, target = data.cuda(), target.cuda()
             data, target = Variable(data), Variable(target)
-            output = model(data)
+            output = net_clone(data)
             test_loss += criterion(output, target).item() # sum up batch loss
             pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
             correct += pred.eq(target.data.view_as(pred)).cpu().sum()
@@ -285,7 +279,7 @@ if __name__ == '__main__':
     # for input = 1, 1% of all devices are S.A.1
     # print('Enter percent of devices stuck at 1 ')
     # prob_sa1 = int(input())/100
-    prob_sa1 = 9.99 / 10
+    prob_sa1 = 10 / 100
     print(f'probability of device stuck at 1: {100 * prob_sa1}%')
 
     sa1 = {'fc1': [],
@@ -293,7 +287,7 @@ if __name__ == '__main__':
            'fc3': []
            }
 
-    #fix what  devices will be SA1
+    # Determine what  devices will stay SA1
     for i in range(len(model.fc1.weight)):
         sa1['fc1'].append([])
         for j in range(len(model.fc1.weight[i])):
@@ -313,12 +307,12 @@ if __name__ == '__main__':
 
         for i in range(len(model.fc1.weight)):
             for j in range(len(model.fc1.weight[i])):
-                print(model.fc1.weight[i, j].tolist())
-                '''with torch.no_grad():
+                with torch.no_grad():
                     if sa1['fc1'][i][j]:
+                        #print(model.fc1.weight[i, j].tolist())
                         model.fc1.weight[i, j] = 1
-                print(model.fc1.weight[i, j].tolist())
-                '''
+                        #print(model.fc1.weight[i, j].tolist())
+
         for i in range(len(model.fc2.weight)):
             for j in range(len(model.fc2.weight[i])):
                 with torch.no_grad():
@@ -333,11 +327,10 @@ if __name__ == '__main__':
         test()
 
 
-        if epoch%10==0:
-            print('stop')
+        #if epoch%10==0:
+            #print('stop')
 
         if epoch%100==0:
             optimizer.param_groups[0]['lr']=optimizer.param_groups[0]['lr']*0.1
 
-        #print(model.parameters())
-        torch.save(model.state_dict(),f'saved_models/red_net_4_50p_sa1/epoch_{epoch}.pth')
+        #torch.save(model.state_dict(),f'saved_models/red_net_3/epoch_{epoch}.pth')
