@@ -16,6 +16,7 @@ from models.binarized_modules import  Binarize,HingeLoss
 import numpy as np
 from PIL import Image
 import random
+import os
 
 import torch
 from torchvision.transforms import ToTensor
@@ -100,95 +101,111 @@ def test(net_in):
         100. * correct / len(test_loader.dataset)))
 
 
+
+
+
+
+path = "saved_models/red_net_4/"
+
+
+
 if __name__ == "__main__":
-    # load back the model
-    state_dict = torch.load("saved_models/red_net_4_50p_sa1/epoch_80.pth")
-    feed_forward_net = red_net_4()
-    feed_forward_net.load_state_dict(state_dict)
 
-    print('original accuracy:')
-    test(feed_forward_net)
+    simulate_sa1  = False
+
+    for pth_file in os.listdir(path):
+        print('#'*35+f'      {pth_file}   '+'#'*40)
+        state_dict= torch.load(path+pth_file)
+
+        # load back the model
+        #state_dict = torch.load("saved_models/red_net_4_50p_sa1/epoch_80.pth")
+        feed_forward_net = red_net_4()
+        feed_forward_net.load_state_dict(state_dict)
+
+        if simulate_sa1:
+            print('original accuracy:')
+        test(feed_forward_net)
+
+        if simulate_sa1:
+            #print(feed_forward_net)
+                #test(feed_forward_net)
+
+                #for input = 1, 1% of all devices are S.A.1
+                #print('Enter percent of devices stuck at 1 ')
+                #prob_sa1 = int(input())/100
+            prob_sa1 = 1
+            print(f'probability of device stuck at 1: {100*prob_sa1}%')
+
+            sa1 = {'fc1': [],
+                   'fc2': [],
+                   'fc3': []
+                   }
+            #print(feed_forward_net.fc1.weight)
+
+            #fix what  devices will be SA1
+            for i in range(len(feed_forward_net.fc1.weight)):
+                sa1['fc1'].append([])
+                for j in range(len(feed_forward_net.fc1.weight[i])):
+                    sa1['fc1'][i].append(False if random.random()>prob_sa1 else True)
+
+            for i in range(len(feed_forward_net.fc2.weight)):
+                sa1['fc2'].append([])
+                for j in range(len(feed_forward_net.fc2.weight[i])):
+                    sa1['fc2'][i].append(False if random.random() > prob_sa1 else True)
+
+            for i in range(len(feed_forward_net.fc3.weight)):
+                sa1['fc3'].append([])
+                for j in range(len(feed_forward_net.fc3.weight[i])):
+                    sa1['fc3'][i].append(False if random.random() > prob_sa1 else True)
+
+            #print(feed_forward_net.fc1.weight)
 
 
-    #print(feed_forward_net)
-    #test(feed_forward_net)
+            # automate this w.r.t arbitrary layer names
+            # Fix wts for SA1 devices
+            for i in range(len(feed_forward_net.fc1.weight)):
+                for j in range(len(feed_forward_net.fc1.weight[i])):
+                    with torch.no_grad():
+                        if sa1['fc1'][i][j]:
+                            feed_forward_net.fc1.weight[i, j] = 1
 
-    #for input = 1, 1% of all devices are S.A.1
-    #print('Enter percent of devices stuck at 1 ')
-    #prob_sa1 = int(input())/100
-    prob_sa1 = 1
-    print(f'probability of device stuck at 1: {100*prob_sa1}%')
+            for i in range(len(feed_forward_net.fc2.weight)):
+                for j in range(len(feed_forward_net.fc2.weight[i])):
+                    with torch.no_grad():
+                        if sa1['fc2'][i][j]:
+                            feed_forward_net.fc2.weight[i, j] = 1
 
-    sa1 = {'fc1': [],
-           'fc2': [],
-           'fc3': []
-           }
-    #print(feed_forward_net.fc1.weight)
+            for i in range(len(feed_forward_net.fc3.weight)):
+                for j in range(len(feed_forward_net.fc3.weight[i])):
+                    with torch.no_grad():
+                        if sa1['fc3'][i][j]:
+                            feed_forward_net.fc3.weight[i, j] = 1
 
-    #fix what  devices will be SA1
-    for i in range(len(feed_forward_net.fc1.weight)):
-        sa1['fc1'].append([])
-        for j in range(len(feed_forward_net.fc1.weight[i])):
-            sa1['fc1'][i].append(False if random.random()>prob_sa1 else True)
-
-    for i in range(len(feed_forward_net.fc2.weight)):
-        sa1['fc2'].append([])
-        for j in range(len(feed_forward_net.fc2.weight[i])):
-            sa1['fc2'][i].append(False if random.random() > prob_sa1 else True)
-
-    for i in range(len(feed_forward_net.fc3.weight)):
-        sa1['fc3'].append([])
-        for j in range(len(feed_forward_net.fc3.weight[i])):
-            sa1['fc3'][i].append(False if random.random() > prob_sa1 else True)
-
-    #print(feed_forward_net.fc1.weight)
-
-
-    # automate this w.r.t arbitrary layer names
-    # Fix wts for SA1 devices
-    for i in range(len(feed_forward_net.fc1.weight)):
-        for j in range(len(feed_forward_net.fc1.weight[i])):
-            with torch.no_grad():
-                if sa1['fc1'][i][j]:
-                    feed_forward_net.fc1.weight[i, j] = 1
-
-    for i in range(len(feed_forward_net.fc2.weight)):
-        for j in range(len(feed_forward_net.fc2.weight[i])):
-            with torch.no_grad():
-                if sa1['fc2'][i][j]:
-                    feed_forward_net.fc2.weight[i, j] = 1
-
-    for i in range(len(feed_forward_net.fc3.weight)):
-        for j in range(len(feed_forward_net.fc3.weight[i])):
-            with torch.no_grad():
-                if sa1['fc3'][i][j]:
-                    feed_forward_net.fc3.weight[i, j] = 1
-
-    '''
-    #test(feed_forward_net)
-
-    #print(feed_forward_net.fc2.weight)
-
-    for i in range(len(feed_forward_net.fc2.weight)):
-        for j in range(len(feed_forward_net.fc2.weight[i])):
-            with torch.no_grad():
+            '''
+                #test(feed_forward_net)
+                
+                #print(feed_forward_net.fc2.weight)
+                
+                for i in range(len(feed_forward_net.fc2.weight)):
+                for j in range(len(feed_forward_net.fc2.weight[i])):
+                with torch.no_grad():
                 if (i + j) % sa1_device_gap == 0:
-                    feed_forward_net.fc2.weight[i, j] = 1
-    #print(feed_forward_net.fc2.weight)
-
-    #test(feed_forward_net)
-
-    #print(feed_forward_net.fc3.weight)
-
-    for i in range(len(feed_forward_net.fc3.weight)):
-        for j in range(len(feed_forward_net.fc3.weight[i])):
-            with torch.no_grad():
+                feed_forward_net.fc2.weight[i, j] = 1
+                #print(feed_forward_net.fc2.weight)
+                
+                #test(feed_forward_net)
+                
+                #print(feed_forward_net.fc3.weight)
+                
+                for i in range(len(feed_forward_net.fc3.weight)):
+                for j in range(len(feed_forward_net.fc3.weight[i])):
+                with torch.no_grad():
                 if (i + j) % sa1_device_gap == 0:
-                    feed_forward_net.fc3.weight[i, j] = 1
-    #print(feed_forward_net.fc3.weight)
-    '''
-    print('accuracy with SA1')
-    test(feed_forward_net)
+                feed_forward_net.fc3.weight[i, j] = 1
+                #print(feed_forward_net.fc3.weight)
+                '''
+            print('accuracy with SA1')
+            test(feed_forward_net)
 
 
 
@@ -206,25 +223,25 @@ if __name__ == "__main__":
 
 
 
-    '''
-    for layer in feed_forward_net.children():
-        #print(feed_forward_net[layer[0]])
-        print(layer)
-        print('----')
-        if isinstance(layer, nn.Linear):
-            print('###########')
-            print(len(layer.state_dict()['weight']))
-            print(len(layer.state_dict()['weight'][0]))
-            print(layer.state_dict()['weight'])
-    '''
-    '''
-    print(feed_forward_net.fc2.weight)
-
-    with torch.no_grad():
-        feed_forward_net.fc2.weight[0,0]=1
-
-    print(feed_forward_net.fc2.weight)
-    '''
+            '''
+                for layer in feed_forward_net.children():
+                #print(feed_forward_net[layer[0]])
+                print(layer)
+                print('----')
+                if isinstance(layer, nn.Linear):
+                print('###########')
+                print(len(layer.state_dict()['weight']))
+                print(len(layer.state_dict()['weight'][0]))
+                print(layer.state_dict()['weight'])
+                '''
+            '''
+                print(feed_forward_net.fc2.weight)
+                
+                with torch.no_grad():
+                feed_forward_net.fc2.weight[0,0]=1
+                
+                print(feed_forward_net.fc2.weight)
+                '''
 
 
 
