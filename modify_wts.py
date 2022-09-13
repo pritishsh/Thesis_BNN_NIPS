@@ -105,7 +105,7 @@ def test(net_in):
 
 
 
-path = "saved_models/red_net_4/"
+path = "saved_models/0709_simulations/10p/"
 
 
 
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     simulate_sa1  = False
 
     for pth_file in os.listdir(path):
-        print('#'*35+f'      {pth_file}   '+'#'*40)
+        #print('#'*35+f'      {pth_file}   '+'#'*40)
         state_dict= torch.load(path+pth_file)
 
         # load back the model
@@ -125,6 +125,7 @@ if __name__ == "__main__":
         if simulate_sa1:
             print('original accuracy:')
         test(feed_forward_net)
+        print(feed_forward_net.fc3.weight)
 
         if simulate_sa1:
             #print(feed_forward_net)

@@ -13,6 +13,8 @@ from models.binarized_modules import  Binarize,HingeLoss
 import numpy as np
 from PIL import Image
 import random
+import switching_energy
+
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
 parser.add_argument('--batch-size', type=int, default=256, metavar='N',
@@ -41,12 +43,10 @@ args.cuda = not args.no_cuda and torch.cuda.is_available()
 
 
 
-num_epochs =1
-prob_sa1 = 100 / 100
-iters = 30
-
-
-
+num_epochs = 5
+prob_sa1 = 00 / 100
+iters = 10
+calculate_switching_energy = False
 
 
 
@@ -336,6 +336,8 @@ if __name__ == '__main__':
 
 
         for epoch in range(1, num_epochs + 1):
+
+
             train(epoch,index)
 
             for i in range(len(model_dict[index].fc1.weight)):
@@ -357,7 +359,18 @@ if __name__ == '__main__':
                         if sa1['fc3'][i][j]:
                             model_dict[index].fc3.weight[i, j] = 1
 
+
+
+
             test(index)
+
+            if calculate_switching_energy:
+                print(model_dict[index].fc2.weight),
+            if calculate_switching_energy:
+                old_model= [copy.deepcopy(model_dict[index].fc1.weight),
+                            copy.deepcopy(model_dict[index].fc2.weight),
+                            copy.deepcopy(model_dict[index].fc3.weight) ]
+                print(old_model)
 
 
             #if epoch%10==0:

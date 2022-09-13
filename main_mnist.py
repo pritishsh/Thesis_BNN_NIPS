@@ -288,4 +288,4 @@ if __name__ == '__main__':
             optimizer.param_groups[0]['lr']=optimizer.param_groups[0]['lr']*0.1
 
         #print(model.parameters())
-        torch.save(model.state_dict(),f'saved_models/red_net_4/epoch_{epoch}.pth')
+        torch.save(model.state_dict(),f'saved_models/1309/red_net_4/epoch_{epoch}.pth')
