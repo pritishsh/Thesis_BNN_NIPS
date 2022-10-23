@@ -105,7 +105,7 @@ def test(net_in):
 
 
 
-path = "saved_models/0709_simulations/10p/"
+path = "saved_models/0910/100_epochs/Stock/"
 
 
 
@@ -121,11 +121,12 @@ if __name__ == "__main__":
         #state_dict = torch.load("saved_models/red_net_4_50p_sa1/epoch_80.pth")
         feed_forward_net = red_net_4()
         feed_forward_net.load_state_dict(state_dict)
+        print(pth_file)
 
         if simulate_sa1:
             print('original accuracy:')
         test(feed_forward_net)
-        print(feed_forward_net.fc3.weight)
+        print(feed_forward_net.fc1.weight.detach().numpy())
 
         if simulate_sa1:
             #print(feed_forward_net)

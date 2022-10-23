@@ -207,6 +207,12 @@ class red_net_4(nn.Module):
         self.logsoftmax=nn.LogSoftmax()
         self.drop=nn.Dropout(0.5)
 
+        # Keys are layer names to simulate as stuck at; value is number of weights
+        # need to automate filling up of values
+        self.stuck_at_layers = {'fc1': [128, 784],
+                                'fc2': [128, 128],
+                                'fc3': [10, 128]}
+
     def forward(self, x):
         x = x.view(-1, 28*28)
         x = self.fc1(x)
@@ -220,15 +226,15 @@ class red_net_4(nn.Module):
 
 
 
-model = red_net_4()
-if args.cuda:
-    torch.cuda.set_device(3)
-    model.cuda()
+#model = red_net_4()
+#if args.cuda:
+#    torch.cuda.set_device(3)
+#    model.cuda()
 
 
-criterion = nn.CrossEntropyLoss()
+#criterion = nn.CrossEntropyLoss()
 #optimizer = optim.Adam(model.parameters(), lr=args.lr)
-optimizer = optim.SGD(model.parameters(), lr=args.lr)
+#optimizer = optim.SGD(model.parameters(), lr=args.lr)
 
 
 def train(epoch):
@@ -246,6 +252,8 @@ def train(epoch):
 
         optimizer.zero_grad()
         loss.backward()
+        # this was original code:
+        '''
         for p in list(model.parameters()):
             if hasattr(p,'org'):
                 p.data.copy_(p.org)
@@ -253,6 +261,15 @@ def train(epoch):
         for p in list(model.parameters()):
             if hasattr(p,'org'):
                 p.org.copy_(p.data.clamp_(-1,1))
+        '''
+        #the next lines are modified
+        for p in list(model.parameters()):
+            if hasattr(p,'org'):
+                p.data.copy_(p.org)
+        optimizer.step()
+        for p in list(model.parameters()):
+            if hasattr(p,'org'):
+                p.org.copy_(p.data.clamp(-1.1))
 
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -280,12 +297,78 @@ def test():
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
 
-if __name__ == '__main__':
-    for epoch in range(1, args.epochs + 1):
-        train(epoch)
-        test()
-        if epoch%100==0:
-            optimizer.param_groups[0]['lr']=optimizer.param_groups[0]['lr']*0.1
 
-        #print(model.parameters())
-        torch.save(model.state_dict(),f'saved_models/1309/red_net_4/epoch_{epoch}.pth')
+
+if __name__ == '__main__':
+    num_epochs  = 50
+    num_iters   = 30
+    prob_sa1    = 10 / 100
+    #iters       = 1
+    learning_rate = 0.01
+    simulate_SA = True
+    calculate_switching_energy  =  True
+    log_interval    = 20
+
+    for iter in range(num_iters):
+        model = red_net_4()
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+
+        #contains database of what devices have stuck at faults
+        sa1 = {layername: np.random.rand(model.stuck_at_layers[layername][0],model.stuck_at_layers[layername][1]) < prob_sa1  for layername in model.stuck_at_layers.keys()}
+
+        if simulate_SA:
+            print(f'probability of device stuck at 1: {100 * prob_sa1}%')
+
+        for epoch in range(1, num_epochs + 1):
+            train(epoch)
+
+            #doing test() before making sa1 might do the trick
+            test()
+
+            #try saving at this point to check if stuck at actually hampers output
+            #torch.save(model.state_dict(),f'saved_models/0910/iter_{iter}_epoch_{epoch}.pth')
+
+
+            # this code is not working so its replaced by old iterative code
+            #with torch.no_grad():
+            #    model.fc1.weight[sa1['fc1']] = 1
+            #    model.fc2.weight[sa1['fc2']] = 1
+                #model.fc3.weight[sa1['fc3']] = 1
+
+            #this is the old code:
+            for i in range(len(model.fc1.weight)):
+                for j in range(len(model.fc1.weight[i])):
+                    with torch.no_grad():
+                        if sa1['fc1'][i][j]:
+                            # print(model.fc1.weight[i, j].tolist())
+                            model.fc1.weight[i, j] = 1
+                            model.fc1.weight.org[i, j] = 1
+                            # print(model.fc1.weight[i, j].tolist())
+
+            for i in range(len(model.fc2.weight)):
+                for j in range(len(model.fc2.weight[i])):
+                    with torch.no_grad():
+                        if sa1['fc2'][i][j]:
+                            model.fc2.weight[i, j] = 1
+                            model.fc2.weight.org[i, j] = 1
+            for i in range(len(model.fc3.weight)):
+                for j in range(len(model.fc3.weight[i])):
+                    with torch.no_grad():
+                        if sa1['fc3'][i][j]:
+                            model.fc3.weight[i, j] = 1
+                            model.fc3.weight.org[i, j] = 1
+
+            # whenever I run test here, the model overrides manually set values
+            # therefore test is commented
+            #test()
+
+            #print(model.parameters())
+
+            #save at this point to store wts with simulation of SA1
+            #torch.save(model.state_dict(),f'saved_models/0910/iter_{iter}_epoch_{epoch}.pth')
+
+        # uncomment to save once per iteration after it has been saved for said number of epochs
+        torch.save(model.state_dict(),f'saved_models/0910/iter_{iter}_epoch_{epoch}.pth')
+
+
