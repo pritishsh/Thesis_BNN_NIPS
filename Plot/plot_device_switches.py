@@ -55,8 +55,8 @@ fig2.update_layout(
     }
 )
 
-fig2.update_xaxes(title='Number of devices')
-fig2.update_yaxes(title='Epoch')
+fig2.update_xaxes(title='Epoch')
+fig2.update_yaxes(title='Number of devices')
 
 
 

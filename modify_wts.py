@@ -4,6 +4,8 @@
 from __future__ import print_function
 import argparse
 import copy
+import pandas as pd
+
 
 import torch
 import torch.nn as nn
@@ -30,7 +32,7 @@ test_loader = torch.utils.data.DataLoader(
                    ])),
     batch_size=1000, shuffle=True)
 
-class_mapping = [
+handwriting_map = [
     "0",
     "1",
     "2",
@@ -43,7 +45,7 @@ class_mapping = [
     "9"
 ]
 
-files = ['zero.png',
+custom_handwriting = ['zero.png',
          'one.png',
          'two.png',
          'three.png',
@@ -94,28 +96,31 @@ def test(net_in):
             test_loss += criterion(output, target).item() # sum up batch loss
             pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
             correct += pred.eq(target.data.view_as(pred)).cpu().sum()
-
+    accuracy = float(100. * correct / len(test_loader.dataset))
     test_loss /= len(test_loader.dataset)
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, len(test_loader.dataset),
-        100. * correct / len(test_loader.dataset)))
+        accuracy))
+    return accuracy.real
 
 
 
 
 
+model_dict_path = "saved_models/0910/150_epochs/1psa1/"
+results_file = "saved_models/0910/150_epochs/results/output.xlsx"
 
-path = "saved_models/0910/100_epochs/Stock/"
 
 
 
 if __name__ == "__main__":
 
-    simulate_sa1  = False
+    simulate_sa1  = True
+    df=pd.DataFrame()
 
-    for pth_file in os.listdir(path):
+    for pth_file in os.listdir(model_dict_path):
         #print('#'*35+f'      {pth_file}   '+'#'*40)
-        state_dict= torch.load(path+pth_file)
+        state_dict= torch.load(model_dict_path + pth_file)
 
         # load back the model
         #state_dict = torch.load("saved_models/red_net_4_50p_sa1/epoch_80.pth")
@@ -123,10 +128,10 @@ if __name__ == "__main__":
         feed_forward_net.load_state_dict(state_dict)
         print(pth_file)
 
-        if simulate_sa1:
-            print('original accuracy:')
+        #if simulate_sa1:
+            #print('original accuracy:')
         test(feed_forward_net)
-        print(feed_forward_net.fc1.weight.detach().numpy())
+        #print(feed_forward_net.fc1.weight.detach().numpy())
 
         if simulate_sa1:
             #print(feed_forward_net)
@@ -135,7 +140,7 @@ if __name__ == "__main__":
                 #for input = 1, 1% of all devices are S.A.1
                 #print('Enter percent of devices stuck at 1 ')
                 #prob_sa1 = int(input())/100
-            prob_sa1 = 1
+            prob_sa1 = 0/100
             print(f'probability of device stuck at 1: {100*prob_sa1}%')
 
             sa1 = {'fc1': [],
@@ -206,24 +211,13 @@ if __name__ == "__main__":
                 feed_forward_net.fc3.weight[i, j] = 1
                 #print(feed_forward_net.fc3.weight)
                 '''
-            print('accuracy with SA1')
-            test(feed_forward_net)
+            #print('accuracy with SA1')
+            accuracy = test(feed_forward_net)
+            df2 = pd.DataFrame.from_dict({
+                pth_file: accuracy
+            }, orient='index')
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            df=df.append(df2)
 
             '''
                 for layer in feed_forward_net.children():
@@ -238,12 +232,31 @@ if __name__ == "__main__":
                 '''
             '''
                 print(feed_forward_net.fc2.weight)
-                
+
                 with torch.no_grad():
                 feed_forward_net.fc2.weight[0,0]=1
-                
+
                 print(feed_forward_net.fc2.weight)
                 '''
+
+    df.to_excel(results_file)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
