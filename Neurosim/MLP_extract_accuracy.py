@@ -8,12 +8,12 @@ from Plot.plot_accuracy_vs_epoch import accuracy_plot
 
 
 def extract_accuracy(in_log, out_excel):
-    '''
+    """
     Scans for accuracy data from Neurosim log file. Stores it in excel file and creates plot of accuracy vs epoch in plotly
     arguments:
     in_log = input log file
     out_excel = output excel file
-    '''
+    """
 
     re_exp = "(?<=epochs is : )[\d]{2}\.[\d]{2}"
 
@@ -32,7 +32,7 @@ def extract_accuracy(in_log, out_excel):
     results.index += 1
     results.to_excel(out_excel)
 
-    accuracy_plot(out_excel)
+    accuracy_plot(out_excel, averaged_samples=True, group_size= 100)
 
 
 if __name__ == '__main__':
