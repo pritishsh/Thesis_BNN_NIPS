@@ -25,6 +25,8 @@ from torchvision.transforms import ToTensor
 
 from main_mnist import Net_no_bn, Net_default, red_net_1, red_net_2, red_net_3, red_net_4
 
+from switching_energy import differences as diff
+
 test_loader = torch.utils.data.DataLoader(
     datasets.MNIST('../data', train=False, transform=transforms.Compose([
                        transforms.ToTensor(),
@@ -107,19 +109,25 @@ def test(net_in):
 
 
 
-model_dict_path = "saved_models/0910/150_epochs/1psa1/"
-results_file = "saved_models/0910/150_epochs/results/output.xlsx"
-
+model_dict_path = "saved_models/0910/one_pass_till_100_epochs_in_situ_10p/"
+results_file = "saved_models/0910/output.xlsx"
 
 
 
 if __name__ == "__main__":
 
-    simulate_sa1  = True
+    simulate_sa1  = False
+    count_switches = True
     df=pd.DataFrame()
 
+    # for switches counting:
+    switchcount = {}
+    prev_epoch_wts = {}  #
+    switch_flag = True #turns to false when we can start comparing wts with previous epoch
+
+
     for pth_file in os.listdir(model_dict_path):
-        #print('#'*35+f'      {pth_file}   '+'#'*40)
+        print('#'*35+f'      {pth_file}   '+'#'*40)
         state_dict= torch.load(model_dict_path + pth_file)
 
         # load back the model
@@ -127,6 +135,28 @@ if __name__ == "__main__":
         feed_forward_net = red_net_4()
         feed_forward_net.load_state_dict(state_dict)
         print(pth_file)
+
+        print()
+
+        if switch_flag: #this section runs on epoch 1
+            switchcount.update({
+                'fc1': np.zeros_like(state_dict['fc1.weight']),
+                'fc2': np.zeros_like(state_dict['fc2.weight']),
+                'fc3': np.zeros_like(state_dict['fc3.weight'])
+            })
+            switch_flag = False
+        else: #this section runs on epoch 2+
+            switchcount.update({
+                'fc1': switchcount['fc1']+diff( state_dict['fc1.weight'], prev_epoch_wts['fc1'] ),
+                'fc2': switchcount['fc2']+diff( state_dict['fc2.weight'], prev_epoch_wts['fc2'] ),
+                'fc3': switchcount['fc3']+diff( state_dict['fc3.weight'], prev_epoch_wts['fc3'] )
+            })
+
+        prev_epoch_wts.update({
+            'fc1' :  state_dict['fc1.weight'],
+            'fc2' :  state_dict['fc2.weight'],
+            'fc3' :  state_dict['fc3.weight']
+        })
 
         #if simulate_sa1:
             #print('original accuracy:')
